@@ -1,0 +1,21 @@
+ {
+  "name": "teetoes-cli",
+  "version": "1.0.0",
+  "description": "text to speech on command line",
+  "main": "bin/teetoes-cli.js",
+  "type": "module",
+  "scripts": {
+    "build": "npx tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "tts",
+    "cli"
+  ],
+  "author": "fraasi",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.12.5",
+    "typescript": "^5.4.4"
+  }
+}
