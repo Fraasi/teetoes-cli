@@ -102,6 +102,7 @@ async function main() {
                     output: process.stdout
                 });
                 const answer = await rl.question(`File ${mp3Path} already exists. Do you want to overwrite it? (y/n) `);
+                rl.close();
                 if (answer !== 'y') {
                     console.info('Canceling...');
                     process.exit(1);
@@ -117,7 +118,6 @@ async function main() {
 }
 main().then(() => {
     console.info('All done');
-    process.exit();
 }).catch(err => {
     console.error(err);
     process.exit(1);
