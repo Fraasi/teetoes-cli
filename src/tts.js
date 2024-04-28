@@ -13,9 +13,9 @@ async function main() {
   } catch (err) {
     throw err
   }
-  const fileText = fs.readFileSync(file, 'utf8')
-  const textArr = sliceAndDiceArray(fileText)
-  console.log('total length:', fileText.length)
+  const text = fs.readFileSync(file, 'utf8')
+  const textArr = sliceAndDiceArray(text)
+  console.log('total length:', text.length)
   console.log(`processing in ${textArr.length} 40K parts...`)
 
   const buffArr = []
@@ -23,8 +23,10 @@ async function main() {
   for (const text of textArr) {
     const formObj = {
       key: process.env.VOICERSS_APIKEY,
-      hl: 'en-us',
-      v: 'Linda',
+      hl: 'fi-fi',
+      v: 'Aada',
+//       hl: 'en-us',
+//       v: 'Linda',
       src: text, // 100KB limit in docs
       r: 0, // speed (-10 to 10)
       c: 'mp3',

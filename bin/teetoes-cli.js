@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import * as readline from 'node:readline/promises';
 import { URLSearchParams } from 'node:url';
 import { parseArgs } from 'node:util';
-console.log(process.argv);
+console.info(process.argv);
 // globals
 const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY || '';
 const DEST_FOLDER = '/d/Radio';
@@ -12,7 +13,6 @@ const FILE = process.argv[2];
 const EXT = path.extname(FILE);
 const FILENAME = path.basename(FILE, EXT);
 // parse args
-// const args = ['-h', '--bar', 'b']
 const options = {
     'help': {
         short: 'h',
@@ -34,9 +34,9 @@ const options = {
     }
 };
 const { values, positionals } = parseArgs({ options, allowPositionals: true, });
-console.log(values, positionals);
+console.info(values, positionals);
 if (values.help) {
-    console.log(`
+    console.info(`
   ${SCRIPTNAME} [options] <filepath>
   -h, --help
     ${options.help.description}
@@ -49,19 +49,19 @@ if (values.help) {
   `);
     process.exit(0);
 }
-process.exit(0);
+// process.exit(0)
 async function main() {
     try {
         const stats = fs.statSync(FILE);
-        console.log(`${FILE} has a size of ${stats.size / 1000} KB`);
+        console.info(`${FILE} has a size of ${stats.size / 1000} KB`);
     }
     catch (err) {
         throw err;
     }
-    const fileText = fs.readFileSync(FILE, 'utf8');
-    const textArr = sliceTextTochunks(fileText);
-    console.log('total length:', fileText.length);
-    console.log(`processing in ${textArr.length} 40K parts...`);
+    const textFile = fs.readFileSync(FILE, 'utf8');
+    const textArr = sliceTextTochunks(textFile);
+    console.info('total length:', textFile.length);
+    console.info(`processing in ${textArr.length} 40K parts...`);
     const buffArr = [];
     for (const text of textArr) {
         const formObj = {
@@ -95,8 +95,20 @@ async function main() {
             if (bin.includes('ERROR')) {
                 throw new Error(bin.toString());
             }
-            fs.writeFileSync(`${DEST_FOLDER}${FILENAME}.mp3`, bin, { encoding: 'binary' });
-            console.log(`${DEST_FOLDER}${FILENAME}.mp3 has been saved`);
+            const mp3Path = `${DEST_FOLDER}/${FILENAME}.mp3`;
+            if (fs.existsSync(mp3Path)) {
+                const rl = readline.createInterface({
+                    input: process.stdin,
+                    output: process.stdout
+                });
+                const answer = await rl.question(`File ${mp3Path} already exists. Do you want to overwrite it? (y/n) `);
+                if (answer !== 'y') {
+                    console.info('Canceling...');
+                    process.exit(1);
+                }
+            }
+            fs.writeFileSync(mp3Path, bin, { encoding: 'binary' });
+            console.info(`${DEST_FOLDER}${FILENAME}.mp3 has been saved`);
         }
         catch (err) {
             throw err;
@@ -104,21 +116,22 @@ async function main() {
     }
 }
 main().then(() => {
-    console.log('All done');
+    console.info('All done');
+    process.exit();
 }).catch(err => {
-    console.log(err);
+    console.error(err);
     process.exit(1);
 });
 /**
  * Slices text to 40K chunks cos all bigger ones fail with empty buffer
  */
 function sliceTextTochunks(text) {
-    const length = text.length;
     const slicedArr = [];
+    const textLength = text.length;
+    const limit = 40000;
     let start = 0;
-    const end = 40000;
-    while (length >= start) {
-        slicedArr.push(text.slice(start, start += end));
+    while (textLength >= start) {
+        slicedArr.push(text.slice(start, start += limit));
     }
     return slicedArr;
 }

@@ -1,4 +1,4 @@
- {
+{
   "name": "teetoes-cli",
   "version": "1.0.0",
   "description": "text to speech on command line",
@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "npx tsc",
+    "watch": "export $(cat .env)&& npx tsc --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
