@@ -33,7 +33,7 @@ const argOptions = {
         default: 'Linda',
     }
 };
-const { values, positionals } = parseArgs({ argOptions, allowPositionals: true, });
+const { values, positionals } = parseArgs({ options: argOptions, allowPositionals: true, });
 console.info(values, positionals);
 if (values.help) {
     console.info(`

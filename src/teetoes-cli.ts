@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import * as readline from 'node:readline/promises'
 import { URLSearchParams } from 'node:url'
-import { parseArgs } from 'node:util'
+import { ParseArgsConfig, parseArgs } from 'node:util'
 
 // globals
 const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY || ''
@@ -38,11 +38,13 @@ const argOptions: Record<string, any> = {
 }
 
 interface Args {
-  values: {[key: keyof typeof argOptions]: string | boolean }
-  positionals: string[]
+  values: {
+    [key: keyof typeof argOptions]: string | boolean | (string | boolean)[] | undefined
+   };
+  positionals: string[];
 }
 
-const { values, positionals }: Args = parseArgs({ argOptions, allowPositionals: true, })
+const { values, positionals }: Args = parseArgs({ options: argOptions, allowPositionals: true, })
 console.info(values, positionals)
 
 if (values.help) {
