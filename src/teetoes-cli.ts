@@ -2,17 +2,29 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import * as readline from 'node:readline/promises'
+import * as readlinePromise from 'node:readline/promises'
+import readline from 'node:readline'
 import { URLSearchParams } from 'node:url'
 import { ParseArgsConfig, parseArgs } from 'node:util'
+import { text } from 'node:stream/consumers'
+
+// const ttt = await text(process.stdin)
+// console.log("🚀 ~ text:", ttt)
+// process.stdin.destroy()
 
 // globals
 const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY || ''
 const DEST_FOLDER = '/d/Radio'
 const SCRIPTNAME = path.basename(process.argv[1], '.js')
-const FILE = process.argv[2]
-const EXT = path.extname(FILE)
-const FILENAME = path.basename(FILE, EXT)
+const FILE: string | undefined = process.argv[2]
+let EXT: string
+let FILENAME: string
+if (FILE) {
+  EXT = path.extname(FILE)
+  FILENAME = path.basename(FILE, EXT)
+} else {
+  FILENAME = 'teetoes'
+}
 const TEXT_LIMIT = 40000 // 100KB limit in docs, everything over 40K fails
 
 // parse args
@@ -40,8 +52,8 @@ const argOptions: Record<string, any> = {
 interface Args {
   values: {
     [key: keyof typeof argOptions]: string | boolean | (string | boolean)[] | undefined
-   };
-  positionals: string[];
+  }
+  positionals: string[]
 }
 
 const { values, positionals }: Args = parseArgs({ options: argOptions, allowPositionals: true, })
@@ -70,14 +82,27 @@ if (values.help) {
  */
 async function main() {
 
-  try {
+  let textFile: string = 'boooo'
+  if (FILE) {
     const stats: fs.Stats = fs.statSync(FILE)
     console.info(`${FILE} has a size of ${stats.size / 1000} KB`)
-  } catch (err) {
-    throw err
-  }
+    textFile = fs.readFileSync(FILE, 'utf8')
+  } else {
+    // const rl = readline.createInterface({
+    //   input: process.stdin,
+    //   output: process.stdout,
+    //   // terminal: false
+    // })
+    // rl.on('line', (line) => textFile += line)
+    // rl.once('close', () => console.log('done'))
+    // rl.close()
 
-  const textFile: string = fs.readFileSync(FILE, 'utf8')
+    // this breaks rl.question below
+    // for await (const chunk of process.stdin) textFile += chunk
+    // readline.
+    // process.stdin.pause()
+    console.log("🚀 ~ main ~ textFile:", textFile)
+  }
   const textArr: string[] = sliceTextTochunks(textFile)
   console.info('total length:', textFile.length)
   console.info(`processing in ${textArr.length} 40K parts...`)
@@ -118,37 +143,49 @@ async function main() {
     buffArr.push(buff)
   }
 
-    const bin: Buffer = await Promise.all(buffArr)
-      .then(bins => Buffer.concat(bins))
+  const bin: Buffer = await Promise.all(buffArr)
+    .then(bins => Buffer.concat(bins))
 
-    try {
+  try {
 
-      if (bin.includes('ERROR')) {
-        throw new Error(bin.toString())
-      }
+    if (bin.includes('ERROR')) {
+      throw new Error(bin.toString())
+    }
 
-      const mp3Path = `${DEST_FOLDER}/${FILENAME}.mp3`
+    const mp3Path = `${DEST_FOLDER}/${FILENAME}.mp3`
 
-      if (fs.existsSync(mp3Path)) {
-        const rl: readline.Interface = readline.createInterface({
-          input: process.stdin,
-          output: process.stdout
-        })
+    if (fs.existsSync(mp3Path)) {
+      const rl: readlinePromise.Interface = readlinePromise.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+        prompt: ':::::',
+        // terminal: false
+      })
+      // clear stdin here?
+      // process.stdin.destroy()
+      rl.on('close', () => {
+        console.info('done')
+      })
+
+
         const answer: string = await rl.question(`File ${mp3Path} already exists. Do you want to overwrite it? (y/n) `)
         rl.close()
+        console.log("🚀 ~ main ~ answer:", answer)
         if (answer !== 'y') {
           console.info('Canceling...')
           process.exit(1)
         }
-      }
-
-      fs.writeFileSync(mp3Path, bin, { encoding: 'binary' })
-      console.info(`${mp3Path} has been saved`)
-
-    } catch (err) {
-      throw err
     }
+
+
+
+    fs.writeFileSync(mp3Path, bin, { encoding: 'binary' })
+    console.info(`${mp3Path} has been saved`)
+
+  } catch (err) {
+    throw err
   }
+}
 
 
 main().then(() => {

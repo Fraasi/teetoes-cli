@@ -1,16 +1,26 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import * as readline from 'node:readline/promises';
+import * as readlinePromise from 'node:readline/promises';
 import { URLSearchParams } from 'node:url';
 import { parseArgs } from 'node:util';
+// const ttt = await text(process.stdin)
+// console.log("🚀 ~ text:", ttt)
+// process.stdin.destroy()
 // globals
 const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY || '';
 const DEST_FOLDER = '/d/Radio';
 const SCRIPTNAME = path.basename(process.argv[1], '.js');
 const FILE = process.argv[2];
-const EXT = path.extname(FILE);
-const FILENAME = path.basename(FILE, EXT);
+let EXT;
+let FILENAME;
+if (FILE) {
+    EXT = path.extname(FILE);
+    FILENAME = path.basename(FILE, EXT);
+}
+else {
+    FILENAME = 'teetoes';
+}
 const TEXT_LIMIT = 40000; // 100KB limit in docs, everything over 40K fails
 // parse args
 const argOptions = {
@@ -56,14 +66,27 @@ if (values.help) {
  * @throws {Error} If there is an error reading the file or making the API request.
  */
 async function main() {
-    try {
+    let textFile = 'boooo';
+    if (FILE) {
         const stats = fs.statSync(FILE);
         console.info(`${FILE} has a size of ${stats.size / 1000} KB`);
+        textFile = fs.readFileSync(FILE, 'utf8');
     }
-    catch (err) {
-        throw err;
+    else {
+        // const rl = readline.createInterface({
+        //   input: process.stdin,
+        //   output: process.stdout,
+        //   // terminal: false
+        // })
+        // rl.on('line', (line) => textFile += line)
+        // rl.once('close', () => console.log('done'))
+        // rl.close()
+        // this breaks rl.question below
+        // for await (const chunk of process.stdin) textFile += chunk
+        // readline.
+        // process.stdin.pause()
+        console.log("🚀 ~ main ~ textFile:", textFile);
     }
-    const textFile = fs.readFileSync(FILE, 'utf8');
     const textArr = sliceTextTochunks(textFile);
     console.info('total length:', textFile.length);
     console.info(`processing in ${textArr.length} 40K parts...`);
@@ -105,12 +128,20 @@ async function main() {
         }
         const mp3Path = `${DEST_FOLDER}/${FILENAME}.mp3`;
         if (fs.existsSync(mp3Path)) {
-            const rl = readline.createInterface({
+            const rl = readlinePromise.createInterface({
                 input: process.stdin,
-                output: process.stdout
+                output: process.stdout,
+                prompt: ':::::',
+                // terminal: false
+            });
+            // clear stdin here?
+            // process.stdin.destroy()
+            rl.on('close', () => {
+                console.info('done');
             });
             const answer = await rl.question(`File ${mp3Path} already exists. Do you want to overwrite it? (y/n) `);
             rl.close();
+            console.log("🚀 ~ main ~ answer:", answer);
             if (answer !== 'y') {
                 console.info('Canceling...');
                 process.exit(1);
