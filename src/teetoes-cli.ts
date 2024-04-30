@@ -6,6 +6,7 @@ import * as readline from 'node:readline/promises'
 import { URLSearchParams } from 'node:url'
 import { parseArgs } from 'node:util'
 
+
 // get envs
 const envs = fs.readFileSync('.env', 'utf8')
 envs.split('\n').forEach((env) => {
@@ -64,6 +65,7 @@ Usage: ${SCRIPT_NAME} [options] <text_file_path>
   process.exit(0)
 }
 
+if (values.lang === 'fi-fi') values.voice = 'Aada'
 process.stdout.write(`Using lang: ${values.lang} and voice: ${values.voice}\n`)
 
 // globals
@@ -87,9 +89,11 @@ async function main() {
 
   const stats = fs.statSync(FILE)
   const textFile = fs.readFileSync(FILE, 'utf8')
+  if (textFile.length === 0) throw `${FILE} seem to be empty! Nothing to convert to audio.`
   const textArr: string[] = sliceTextTochunks(textFile)
   process.stdout.write(`${FILE} has a size of ${stats.size / 1000} KB and length of: ${textFile.length}\n`)
-  process.stdout.write(`processing in ${textArr.length} ${TEXT_LIMIT / 1000}K parts...\n`)
+  process.stdout.write(`processing in ${textArr.length} ${TEXT_LIMIT / 1000}K parts...`)
+  const clearProgressSpinner: Function = progressSpinner()
 
   const buffArr: Promise<Buffer>[] = []
 
@@ -129,6 +133,8 @@ async function main() {
 
   const bin: Buffer = await Promise.all(buffArr)
     .then(bins => Buffer.concat(bins))
+
+  clearProgressSpinner()
 
   try {
 
@@ -170,6 +176,25 @@ function sliceTextTochunks(text: string): Array<string> {
     slicedArr.push(text.slice(start, start += TEXT_LIMIT))
   }
   return slicedArr
+}
+
+/**
+ * Creates a progress spinner that animates a series of characters at regular intervals.
+ *
+ * @return {() => void} A function that clears the interval and moves the cursor to a new line.
+ */
+function progressSpinner(): () => void {
+  const ticks = ['|', '/', '—', '\\']
+  let i = 0
+  let intValID: NodeJS.Timeout = setInterval(() => {
+    process.stdout.write(ticks[i++ % ticks.length])
+    process.stdout.moveCursor(-1, 0)
+  }, 200)
+
+  return () => {
+    clearInterval(intValID)
+    process.stdout.write('\n')
+  }
 }
 
 main().then(() => {
