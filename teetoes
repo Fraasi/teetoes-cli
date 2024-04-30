@@ -1,0 +1,195 @@
+#!/usr/bin/env node
+System.register("teetoes-cli", ["node:fs", "node:path", "node:readline/promises", "node:url", "node:util"], function (exports_1, context_1) {
+    "use strict";
+    var node_fs_1, node_path_1, readline, node_url_1, node_util_1, envs, argOptions, _a, values, positionals, VOICERSS_APIKEY, DEST_FOLDER, FILE, EXT, FILENAME, TEXT_LIMIT;
+    var __moduleName = context_1 && context_1.id;
+    /**
+     * Asynchronously executes the main logic of the program.
+     *
+     * @return {Promise<void>} A promise that resolves when the main logic is complete.
+     * @throws {Error} If there is an error reading the file or making the API request.
+     */
+    async function main() {
+        let textFile = 'boooo';
+        if (FILE) {
+            const stats = node_fs_1.default.statSync(FILE);
+            console.info(`${FILE} has a size of ${stats.size / 1000} KB`);
+            textFile = node_fs_1.default.readFileSync(FILE, 'utf8');
+        }
+        else {
+            // const rl = readline.createInterface({
+            //   input: process.stdin,
+            //   output: process.stdout,
+            //   // terminal: false
+            // })
+            // rl.on('line', (line) => textFile += line)
+            // rl.once('close', () => console.log('done'))
+            // rl.close()
+            // this breaks rl.question below
+            // for await (const chunk of process.stdin) textFile += chunk
+            // readline.
+            // process.stdin.pause()
+            console.log("🚀 ~ main ~ textFile:", textFile);
+        }
+        const textArr = sliceTextTochunks(textFile);
+        console.info('total length:', textFile.length);
+        console.info(`processing in ${textArr.length} 40K parts...`);
+        const buffArr = [];
+        for (const text of textArr) {
+            const formObj = {
+                key: VOICERSS_APIKEY,
+                hl: values.lang,
+                v: values.voice,
+                src: text, // see TEXT_LIMIT
+                r: 0, // speed (-10 to 10)
+                c: 'mp3',
+                f: '44khz_16bit_stereo',
+                b64: false,
+            };
+            const buff = fetch('https://api.voicerss.org/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: new node_url_1.URLSearchParams(formObj).toString()
+            }).then(async (res) => {
+                if (res.status == 200) {
+                    const arrayBuf = await res.arrayBuffer();
+                    if (Buffer.byteLength(arrayBuf, 'binary') <= 1) {
+                        throw new Error(`Buffer is empty, length: ${Buffer.byteLength(arrayBuf, 'binary')}`);
+                    }
+                    return await Buffer.from(arrayBuf);
+                }
+                else {
+                    throw new Error(res.toString());
+                }
+            });
+            buffArr.push(buff);
+        }
+        const bin = await Promise.all(buffArr)
+            .then(bins => Buffer.concat(bins));
+        try {
+            if (bin.includes('ERROR')) {
+                throw new Error(bin.toString());
+            }
+            const mp3Path = `${DEST_FOLDER}/${FILENAME}.mp3`;
+            if (node_fs_1.default.existsSync(mp3Path)) {
+                const rl = readline.createInterface({
+                    input: process.stdin,
+                    output: process.stdout,
+                    prompt: ':::::',
+                    // terminal: false
+                });
+                // clear stdin here?
+                // process.stdin.destroy()
+                rl.on('close', () => {
+                    console.info('done');
+                });
+                const answer = await rl.question(`File ${mp3Path} already exists. Do you want to overwrite it? (y/n) `);
+                rl.close();
+                console.log("🚀 ~ main ~ answer:", answer);
+                if (answer !== 'y') {
+                    console.info('Canceling...');
+                    process.exit(1);
+                }
+            }
+            node_fs_1.default.writeFileSync(mp3Path, bin, { encoding: 'binary' });
+            console.info(`${mp3Path} has been saved`);
+        }
+        catch (err) {
+            throw err;
+        }
+    }
+    /**
+     * Slices text to TEXT_LIMIT chunks cos all bigger ones fail with empty buffer
+     */
+    function sliceTextTochunks(text) {
+        const slicedArr = [];
+        const textLength = text.length;
+        let start = 0;
+        while (textLength >= start) {
+            slicedArr.push(text.slice(start, start += TEXT_LIMIT));
+        }
+        return slicedArr;
+    }
+    return {
+        setters: [
+            function (node_fs_1_1) {
+                node_fs_1 = node_fs_1_1;
+            },
+            function (node_path_1_1) {
+                node_path_1 = node_path_1_1;
+            },
+            function (readline_1) {
+                readline = readline_1;
+            },
+            function (node_url_1_1) {
+                node_url_1 = node_url_1_1;
+            },
+            function (node_util_1_1) {
+                node_util_1 = node_util_1_1;
+            }
+        ],
+        execute: function () {
+            // get envs
+            envs = node_fs_1.default.readFileSync('.env', 'utf8');
+            envs.split('\n').forEach((env) => {
+                const [key, value] = env.split('=');
+                process.env[key] = value;
+            });
+            // parse args
+            argOptions = {
+                'help': {
+                    short: 'h',
+                    type: 'boolean',
+                    default: false,
+                    description: 'this help',
+                },
+                'lang': {
+                    short: 'l',
+                    type: 'string',
+                    default: 'en-us',
+                    description: 'choose language (default: en-us)',
+                },
+                'voice': {
+                    short: 'v',
+                    type: 'string',
+                    description: 'choose voice (default: Linda)',
+                    default: 'Linda',
+                }
+            };
+            _a = node_util_1.parseArgs({ options: argOptions, allowPositionals: true, }), values = _a.values, positionals = _a.positionals;
+            console.info(values, positionals);
+            if (values.help) {
+                console.info(`
+  ${node_path_1.default.basename(process.argv[1])} [options] <filepath>
+  -h, --help
+    ${argOptions.help.description}
+  -l, --lang
+    ${argOptions.lang.description}
+  -v, --voice
+    ${argOptions.voice.description}
+
+  <filepath> - path to a text you want to convert to mp3
+  `);
+                process.exit(0);
+            }
+            // globals
+            VOICERSS_APIKEY = process.env.VOICERSS_APIKEY || '';
+            DEST_FOLDER = process.env.TEETOES_DEST_FOLDER || '.';
+            FILE = process.argv[2];
+            if (FILE) {
+                EXT = node_path_1.default.extname(FILE);
+                FILENAME = node_path_1.default.basename(FILE, EXT);
+            }
+            else {
+                FILENAME = 'teetoes';
+            }
+            TEXT_LIMIT = 40000; // 100KB limit in docs, everything over 40K fails
+            main().then(() => {
+                console.info('All done');
+            }).catch(err => {
+                console.error(err);
+                process.exit(1);
+            });
+        }
+    };
+});

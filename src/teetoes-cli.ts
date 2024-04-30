@@ -1,31 +1,17 @@
 #!/usr/bin/env node
 
-import fs from 'node:fs'
+import fs, { PathLike } from 'node:fs'
 import path from 'node:path'
-import * as readlinePromise from 'node:readline/promises'
-import readline from 'node:readline'
+import * as readline from 'node:readline/promises'
 import { URLSearchParams } from 'node:url'
-import { ParseArgsConfig, parseArgs } from 'node:util'
-import { text } from 'node:stream/consumers'
+import { parseArgs } from 'node:util'
 
-// const ttt = await text(process.stdin)
-// console.log("🚀 ~ text:", ttt)
-// process.stdin.destroy()
-
-// globals
-const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY || ''
-const DEST_FOLDER = '/d/Radio'
-const SCRIPTNAME = path.basename(process.argv[1], '.js')
-const FILE: string | undefined = process.argv[2]
-let EXT: string
-let FILENAME: string
-if (FILE) {
-  EXT = path.extname(FILE)
-  FILENAME = path.basename(FILE, EXT)
-} else {
-  FILENAME = 'teetoes'
-}
-const TEXT_LIMIT = 40000 // 100KB limit in docs, everything over 40K fails
+// get envs
+const envs = fs.readFileSync('.env', 'utf8')
+envs.split('\n').forEach((env) => {
+  const [key, value] = env.split('=')
+  process.env[key] = value
+})
 
 // parse args
 const argOptions: Record<string, any> = {
@@ -57,11 +43,12 @@ interface Args {
 }
 
 const { values, positionals }: Args = parseArgs({ options: argOptions, allowPositionals: true, })
-console.info(values, positionals)
 
+const SCRIPT_NAME = path.basename(process.argv[1])
 if (values.help) {
-  console.info(`
-  ${SCRIPTNAME} [options] <filepath>
+  process.stdout.write(`
+Usage: ${SCRIPT_NAME} [options] <text_file_path>
+
   -h, --help
     ${argOptions.help.description}
   -l, --lang
@@ -69,10 +56,26 @@ if (values.help) {
   -v, --voice
     ${argOptions.voice.description}
 
-  <filepath> - path to a text you want to convert to mp3
+  <text_file_path>
+    path to a text file you want to convert to mp3
+
+  See other lang & voice options at:
   `)
   process.exit(0)
 }
+
+process.stdout.write(`Using lang: ${values.lang} and voice: ${values.voice}\n`)
+
+// globals
+const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY || ''
+const DEST_FOLDER = process.env.TEETOES_DEST_FOLDER || '.'
+const FILE: PathLike = positionals[0]
+if (!FILE) throw ` No text file specified! See ${SCRIPT_NAME} --help`
+
+const EXT = path.extname(FILE)
+const FILENAME = path.basename(FILE, EXT)
+const TEXT_LIMIT = 40000 // 100KB limit in docs, everything over 40K fails with empty buffer
+
 
 /**
  * Asynchronously executes the main logic of the program.
@@ -82,30 +85,11 @@ if (values.help) {
  */
 async function main() {
 
-  let textFile: string = 'boooo'
-  if (FILE) {
-    const stats: fs.Stats = fs.statSync(FILE)
-    console.info(`${FILE} has a size of ${stats.size / 1000} KB`)
-    textFile = fs.readFileSync(FILE, 'utf8')
-  } else {
-    // const rl = readline.createInterface({
-    //   input: process.stdin,
-    //   output: process.stdout,
-    //   // terminal: false
-    // })
-    // rl.on('line', (line) => textFile += line)
-    // rl.once('close', () => console.log('done'))
-    // rl.close()
-
-    // this breaks rl.question below
-    // for await (const chunk of process.stdin) textFile += chunk
-    // readline.
-    // process.stdin.pause()
-    console.log("🚀 ~ main ~ textFile:", textFile)
-  }
+  const stats = fs.statSync(FILE)
+  const textFile = fs.readFileSync(FILE, 'utf8')
   const textArr: string[] = sliceTextTochunks(textFile)
-  console.info('total length:', textFile.length)
-  console.info(`processing in ${textArr.length} 40K parts...`)
+  process.stdout.write(`${FILE} has a size of ${stats.size / 1000} KB and length of: ${textFile.length}\n`)
+  process.stdout.write(`processing in ${textArr.length} ${TEXT_LIMIT / 1000}K parts...\n`)
 
   const buffArr: Promise<Buffer>[] = []
 
@@ -155,45 +139,25 @@ async function main() {
     const mp3Path = `${DEST_FOLDER}/${FILENAME}.mp3`
 
     if (fs.existsSync(mp3Path)) {
-      const rl: readlinePromise.Interface = readlinePromise.createInterface({
+      const rl: readline.Interface = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
-        prompt: ':::::',
-        // terminal: false
       })
-      // clear stdin here?
-      // process.stdin.destroy()
-      rl.on('close', () => {
-        console.info('done')
-      })
-
-
-        const answer: string = await rl.question(`File ${mp3Path} already exists. Do you want to overwrite it? (y/n) `)
-        rl.close()
-        console.log("🚀 ~ main ~ answer:", answer)
-        if (answer !== 'y') {
-          console.info('Canceling...')
-          process.exit(1)
-        }
+      const answer: string = await rl.question(`File ${mp3Path} already exists. Do you want to overwrite it? (y/n) `)
+      rl.close()
+      if (answer !== 'y') {
+        process.stdout.write('Canceling...\n')
+        process.exit(1)
+      }
     }
 
-
-
     fs.writeFileSync(mp3Path, bin, { encoding: 'binary' })
-    console.info(`${mp3Path} has been saved`)
+    process.stdout.write(`${mp3Path} has been saved\n`)
 
   } catch (err) {
     throw err
   }
 }
-
-
-main().then(() => {
-  console.info('All done')
-}).catch(err => {
-  console.error(err)
-  process.exit(1)
-})
 
 /**
  * Slices text to TEXT_LIMIT chunks cos all bigger ones fail with empty buffer
@@ -207,3 +171,10 @@ function sliceTextTochunks(text: string): Array<string> {
   }
   return slicedArr
 }
+
+main().then(() => {
+  console.info('All done')
+}).catch(err => {
+  console.error(err)
+  process.exit(1)
+})
