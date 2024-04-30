@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "npx tsc",
-    "postbuild": "mv bin/teetoes-cli.js bin/teetoes && chmod +x bin/teetoes",
+    "postbuild": "./postbuild_script.sh",
     "watch": "export $(cat .env)&& npx tsc --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

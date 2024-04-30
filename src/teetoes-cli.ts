@@ -1,4 +1,9 @@
 #!/usr/bin/env node
+//*
+/* teetoes tex to speeech on command line
+/* values between ~ & ~, are replaced in postbuild_script.sh
+/* to keep this in one file & dependencies to zero
+*/
 
 import fs, { PathLike } from 'node:fs'
 import path from 'node:path'
@@ -7,8 +12,8 @@ import { URLSearchParams } from 'node:url'
 import { parseArgs } from 'node:util'
 
 
-// get envs
-const envs = fs.readFileSync('.env', 'utf8')
+// get envs from config
+const envs = fs.readFileSync('~/.config/teetoes/config', 'utf8')
 envs.split('\n').forEach((env) => {
   const [key, value] = env.split('=')
   process.env[key] = value
@@ -54,7 +59,7 @@ const { values, positionals }: Args = parseArgs({ options: argOptions, allowPosi
 const SCRIPT_NAME = path.basename(process.argv[1])
 if (values.help) {
   process.stdout.write(`
-${SCRIPT_NAME}: Text to speech on command line
+${SCRIPT_NAME} v~TEETOES_VERSION~: Text to speech on command line
 
 Usage: ${SCRIPT_NAME} [options] <text_file_path>
 
@@ -76,7 +81,6 @@ Usage: ${SCRIPT_NAME} [options] <text_file_path>
   process.exit(0)
 }
 
-if (values.lang === 'fi-fi') values.voice = 'Aada'
 process.stdout.write(`Using lang: ${values.lang} and voice: ${values.voice}\n`)
 
 // globals
@@ -209,7 +213,7 @@ function progressSpinner(): () => void {
 }
 
 main().then(() => {
-  console.info('All done')
+  process.stdout.write('All done')
 }).catch(err => {
   console.error(err)
   process.exit(1)
