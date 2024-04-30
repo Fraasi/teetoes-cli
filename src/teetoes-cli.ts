@@ -33,7 +33,13 @@ const argOptions: Record<string, any> = {
     type: 'string',
     description: 'choose voice (default: Linda)',
     default: 'Linda',
-  }
+  },
+  'speed': {
+    short: 's',
+    type: 'string',
+    description: 'choose speed (-10 to 10, default: 0)',
+    default: '0',
+  },
 }
 
 interface Args {
@@ -48,6 +54,8 @@ const { values, positionals }: Args = parseArgs({ options: argOptions, allowPosi
 const SCRIPT_NAME = path.basename(process.argv[1])
 if (values.help) {
   process.stdout.write(`
+${SCRIPT_NAME}: Text to speech on command line
+
 Usage: ${SCRIPT_NAME} [options] <text_file_path>
 
   -h, --help
@@ -56,11 +64,14 @@ Usage: ${SCRIPT_NAME} [options] <text_file_path>
     ${argOptions.lang.description}
   -v, --voice
     ${argOptions.voice.description}
+  -s --speed
+    ${argOptions.speed.description}
 
   <text_file_path>
-    path to a text file you want to convert to mp3
+    path to a text file you want to convert to audio
 
-  See other lang & voice options at:
+  See other language & voice options at: https://voicerss.org/api/demo.aspx
+  Repository: https://github.com/fraasi/teetoes-cli
   `)
   process.exit(0)
 }
@@ -103,7 +114,7 @@ async function main() {
       hl: values.lang,
       v: values.voice,
       src: text, // see TEXT_LIMIT
-      r: 0, // speed (-10 to 10)
+      r: Number(values.speed),
       c: 'mp3',
       f: '44khz_16bit_stereo',
       b64: false,
