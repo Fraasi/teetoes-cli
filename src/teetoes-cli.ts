@@ -5,6 +5,7 @@
 /* to keep this in one file & dependencies to zero
 */
 
+import { homedir } from 'node:os'
 import fs, { PathLike } from 'node:fs'
 import path from 'node:path'
 import * as readline from 'node:readline/promises'
@@ -13,9 +14,10 @@ import { parseArgs } from 'node:util'
 
 
 // get envs from config
-const envs = fs.readFileSync('~/.config/teetoes/config', 'utf8')
+const envs: string = fs.readFileSync(path.join(homedir(), '/.config/teetoes/config'), 'utf8')
 envs.split('\n').forEach((env) => {
   const [key, value] = env.split('=')
+  if (!key || !value) return
   process.env[key] = value
 })
 
@@ -30,20 +32,20 @@ const argOptions: Record<string, any> = {
   'lang': {
     short: 'l',
     type: 'string',
-    default: 'en-us',
-    description: 'choose language (default: en-us)',
+    default: process.env.TEETOES_LANGUAGE ?? 'en-us',
+    description: 'language (default: en-us)',
   },
   'voice': {
     short: 'v',
     type: 'string',
-    description: 'choose voice (default: Linda)',
-    default: 'Linda',
+    description: 'voice (default: Linda)',
+    default: process.env.TEETOES_VOICE ?? 'Linda',
   },
-  'speed': {
-    short: 's',
+  'rate': {
+    short: 'r',
     type: 'string',
-    description: 'choose speed (-10 to 10, default: 0)',
-    default: '0',
+    description: 'speech rate (-10 to 10, default: 0)',
+    default: process.env.TEETOES_SPEECH_RATE ?? '0',
   },
 }
 
@@ -57,6 +59,7 @@ interface Args {
 const { values, positionals }: Args = parseArgs({ options: argOptions, allowPositionals: true, })
 
 const SCRIPT_NAME = path.basename(process.argv[1])
+
 if (values.help) {
   process.stdout.write(`
 ${SCRIPT_NAME} v~TEETOES_VERSION~: Text to speech on command line
@@ -70,28 +73,29 @@ Usage: ${SCRIPT_NAME} [options] <text_file_path>
   -v, --voice
     ${argOptions.voice.description}
   -s --speed
-    ${argOptions.speed.description}
+    ${argOptions.rate.description}
 
   <text_file_path>
     path to a text file you want to convert to audio
 
+  Options order: arguments -> from config -> defaults
   See other language & voice options at: https://voicerss.org/api/demo.aspx
   Repository: https://github.com/fraasi/teetoes-cli
   `)
   process.exit(0)
 }
 
-process.stdout.write(`Using lang: ${values.lang} and voice: ${values.voice}\n`)
-
-// globals
-const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY || ''
-const DEST_FOLDER = process.env.TEETOES_DEST_FOLDER || '.'
+// set globals
+const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY ?? ''
+const DEST_FOLDER = process.env.TEETOES_DEST_FOLDER ?? '.'
 const FILE: PathLike = positionals[0]
 if (!FILE) throw ` No text file specified! See ${SCRIPT_NAME} --help`
 
 const EXT = path.extname(FILE)
 const FILENAME = path.basename(FILE, EXT)
 const TEXT_LIMIT = 40000 // 100KB limit in docs, everything over 40K fails with empty buffer
+
+process.stdout.write(`lang: ${values.lang}, voice: ${values.voice}, rate: ${values.rate}\n`)
 
 
 /**
@@ -118,7 +122,7 @@ async function main() {
       hl: values.lang,
       v: values.voice,
       src: text, // see TEXT_LIMIT
-      r: Number(values.speed),
+      r: values.rate,
       c: 'mp3',
       f: '44khz_16bit_stereo',
       b64: false,
