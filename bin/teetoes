@@ -1,11 +1,17 @@
 #!/usr/bin/env node
+//*
+/* teetoes tex to speeech on command line
+/* values between ~ & ~, are replaced in postbuild_script.sh
+/* to keep this in one file & dependencies to zero
+*/
+import { homedir } from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
 import * as readline from 'node:readline/promises';
 import { URLSearchParams } from 'node:url';
 import { parseArgs } from 'node:util';
-// get envs
-const envs = fs.readFileSync('.env', 'utf8');
+// get envs from config
+const envs = fs.readFileSync(path.join(homedir(), '/.config/teetoes/config'), 'utf8');
 envs.split('\n').forEach((env) => {
     const [key, value] = env.split('=');
     process.env[key] = value;
@@ -21,27 +27,28 @@ const argOptions = {
     'lang': {
         short: 'l',
         type: 'string',
-        default: 'en-us',
-        description: 'choose language (default: en-us)',
+        default: process.env.TEETOES_LANGUAGE ?? 'en-us',
+        description: 'choose language (default: from config or en-us)',
     },
     'voice': {
         short: 'v',
         type: 'string',
-        description: 'choose voice (default: Linda)',
-        default: 'Linda',
+        description: 'choose voice (default: from config or Linda)',
+        default: process.env.TEETOES_VOICE ?? 'Linda',
     },
-    'speed': {
-        short: 's',
+    'rate': {
+        short: 'r',
         type: 'string',
-        description: 'choose speed (-10 to 10, default: 0)',
-        default: '0',
+        description: 'speech rate (speed (-10 to 10, default: from config or 0)',
+        default: process.env.TEETOES_SPEECH_RATE ?? '0',
     },
 };
 const { values, positionals } = parseArgs({ options: argOptions, allowPositionals: true, });
+console.log("🚀 ~ values:", values);
 const SCRIPT_NAME = path.basename(process.argv[1]);
 if (values.help) {
     process.stdout.write(`
-${SCRIPT_NAME}: Text to speech on command line
+${SCRIPT_NAME} v1.0.0: Text to speech on command line
 
 Usage: ${SCRIPT_NAME} [options] <text_file_path>
 
@@ -52,7 +59,7 @@ Usage: ${SCRIPT_NAME} [options] <text_file_path>
   -v, --voice
     ${argOptions.voice.description}
   -s --speed
-    ${argOptions.speed.description}
+    ${argOptions.rate.description}
 
   <text_file_path>
     path to a text file you want to convert to audio
@@ -62,18 +69,16 @@ Usage: ${SCRIPT_NAME} [options] <text_file_path>
   `);
     process.exit(0);
 }
-if (values.lang === 'fi-fi')
-    values.voice = 'Aada';
-process.stdout.write(`Using lang: ${values.lang} and voice: ${values.voice}\n`);
-// globals
-const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY || '';
-const DEST_FOLDER = process.env.TEETOES_DEST_FOLDER || '.';
+// set globals
+const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY ?? '';
+const DEST_FOLDER = process.env.TEETOES_DEST_FOLDER ?? '.';
 const FILE = positionals[0];
 if (!FILE)
     throw ` No text file specified! See ${SCRIPT_NAME} --help`;
 const EXT = path.extname(FILE);
 const FILENAME = path.basename(FILE, EXT);
 const TEXT_LIMIT = 40000; // 100KB limit in docs, everything over 40K fails with empty buffer
+process.stdout.write(`lang: ${values.lang}, voice: ${values.voice}, rate: ${values.rate}\n`);
 /**
  * Asynchronously executes the main logic of the program.
  *
@@ -96,7 +101,7 @@ async function main() {
             hl: values.lang,
             v: values.voice,
             src: text, // see TEXT_LIMIT
-            r: Number(values.speed),
+            r: values.rate,
             c: 'mp3',
             f: '44khz_16bit_stereo',
             b64: false,
@@ -176,7 +181,7 @@ function progressSpinner() {
     };
 }
 main().then(() => {
-    console.info('All done');
+    process.stdout.write('All done');
 }).catch(err => {
     console.error(err);
     process.exit(1);
