@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 //*
 /* teetoes tex to speeech on command line
-/* values between ~ & ~, are replaced in postbuild_script.sh
-/* to keep this in one file & dependencies to zero
+/* values between ~ & ~, are replaced in postbuild_script.sh to keep this in one file & dependencies to zero
 */
 import { homedir } from 'node:os';
 import fs from 'node:fs';
@@ -11,9 +10,12 @@ import * as readline from 'node:readline/promises';
 import { URLSearchParams } from 'node:url';
 import { parseArgs } from 'node:util';
 // get envs from config
+// FIX: to use util.parseEnv  https://nodejs.org/api/util.html#utilparseenvcontent
 const envs = fs.readFileSync(path.join(homedir(), '/.config/teetoes/config'), 'utf8');
 envs.split('\n').forEach((env) => {
     const [key, value] = env.split('=');
+    if (!key || !value)
+        return;
     process.env[key] = value;
 });
 // parse args
@@ -28,23 +30,28 @@ const argOptions = {
         short: 'l',
         type: 'string',
         default: process.env.TEETOES_LANGUAGE ?? 'en-us',
-        description: 'choose language (default: from config or en-us)',
+        description: 'language (default: en-us)',
     },
     'voice': {
         short: 'v',
         type: 'string',
-        description: 'choose voice (default: from config or Linda)',
+        description: 'voice (default: Linda)',
         default: process.env.TEETOES_VOICE ?? 'Linda',
     },
     'rate': {
         short: 'r',
         type: 'string',
-        description: 'speech rate (speed (-10 to 10, default: from config or 0)',
+        description: 'speech rate (-10 to 10, default: 0)',
         default: process.env.TEETOES_SPEECH_RATE ?? '0',
     },
+    'output': {
+        short: 'o',
+        type: 'string',
+        description: 'output name for mp3 file (default: same as input file name)',
+        default: process.env.TEETOES_OUTPUT_NAME ?? '',
+    }
 };
 const { values, positionals } = parseArgs({ options: argOptions, allowPositionals: true, });
-console.log("🚀 ~ values:", values);
 const SCRIPT_NAME = path.basename(process.argv[1]);
 if (values.help) {
     process.stdout.write(`
@@ -60,10 +67,13 @@ Usage: ${SCRIPT_NAME} [options] <text_file_path>
     ${argOptions.voice.description}
   -s --speed
     ${argOptions.rate.description}
+  -o, --output
+    ${argOptions.output.description}
 
   <text_file_path>
     path to a text file you want to convert to audio
 
+  Options order: arguments -> from config -> defaults
   See other language & voice options at: https://voicerss.org/api/demo.aspx
   Repository: https://github.com/fraasi/teetoes-cli
   `);
@@ -71,13 +81,13 @@ Usage: ${SCRIPT_NAME} [options] <text_file_path>
 }
 // set globals
 const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY ?? '';
-const DEST_FOLDER = process.env.TEETOES_DEST_FOLDER ?? '.';
-const FILE = positionals[0];
-if (!FILE)
-    throw ` No text file specified! See ${SCRIPT_NAME} --help`;
-const EXT = path.extname(FILE);
-const FILENAME = path.basename(FILE, EXT);
 const TEXT_LIMIT = 40000; // 100KB limit in docs, everything over 40K fails with empty buffer
+const OUT_FOLDER = process.env.TEETOES_OUTPUT_FOLDER ?? '.';
+const TEXT_FILE = positionals[0];
+if (!TEXT_FILE)
+    throw ` No text file specified! See ${SCRIPT_NAME} --help`;
+const TEXT_FILE_EXT = path.extname(TEXT_FILE);
+const FILENAME = values.output ?? path.basename(TEXT_FILE, TEXT_FILE_EXT);
 process.stdout.write(`lang: ${values.lang}, voice: ${values.voice}, rate: ${values.rate}\n`);
 /**
  * Asynchronously executes the main logic of the program.
@@ -86,12 +96,12 @@ process.stdout.write(`lang: ${values.lang}, voice: ${values.voice}, rate: ${valu
  * @throws {Error} If there is an error reading the file or making the API request.
  */
 async function main() {
-    const stats = fs.statSync(FILE);
-    const textFile = fs.readFileSync(FILE, 'utf8');
+    const stats = fs.statSync(TEXT_FILE);
+    const textFile = fs.readFileSync(TEXT_FILE, 'utf8');
     if (textFile.length === 0)
-        throw `${FILE} seem to be empty! Nothing to convert to audio.`;
+        throw `${TEXT_FILE} seem to be empty! Nothing to convert to audio.`;
     const textArr = sliceTextTochunks(textFile);
-    process.stdout.write(`${FILE} has a size of ${stats.size / 1000} KB and length of: ${textFile.length}\n`);
+    process.stdout.write(`${TEXT_FILE} has a size of ${stats.size / 1000} KB and length of: ${textFile.length}\n`);
     process.stdout.write(`processing in ${textArr.length} ${TEXT_LIMIT / 1000}K parts...`);
     const clearProgressSpinner = progressSpinner();
     const buffArr = [];
@@ -131,7 +141,8 @@ async function main() {
         if (bin.includes('ERROR')) {
             throw new Error(bin.toString());
         }
-        const mp3Path = `${DEST_FOLDER}/${FILENAME}.mp3`;
+        const ext = FILENAME.endsWith('mp3') ? '' : 'mp3';
+        const mp3Path = `${OUT_FOLDER}/${FILENAME}.${ext}`;
         if (fs.existsSync(mp3Path)) {
             const rl = readline.createInterface({
                 input: process.stdin,
