@@ -1,6 +1,6 @@
 {
   "name": "teetoes-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "text to speech on command line",
   "main": "bin/teetoes",
   "type": "module",

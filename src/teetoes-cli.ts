@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 //*
 /* teetoes tex to speeech on command line
-/* values between ~ & ~, are replaced in postbuild_script.sh to keep this in one file & dependencies to zero
 */
 
 import { homedir } from 'node:os'
@@ -46,7 +45,7 @@ const argOptions: Record<string, any> = {
     short: 'o',
     type: 'string',
     description: 'output name for mp3 file (default: same as input file name)',
-    default: process.env.TEETOES_OUTPUT_NAME ?? '',
+    default: process.env.TEETOES_OUTPUT_NAME ?? undefined,
   }
 }
 
@@ -59,11 +58,12 @@ interface Args {
 
 const { values, positionals }: Args = parseArgs({ options: argOptions, allowPositionals: true, })
 
+const TEETOES_VERSION = '~TEETOES_VERSION~' // replaced in postbuild_script.sh
 const SCRIPT_NAME = path.basename(process.argv[1])
 
 if (values.help) {
   process.stdout.write(`
-${SCRIPT_NAME} v~TEETOES_VERSION~: Text to speech on command line
+${SCRIPT_NAME} v${TEETOES_VERSION}: Text to speech on command line
 
 Usage: ${SCRIPT_NAME} [options] <text_file_path>
 
@@ -82,7 +82,7 @@ Usage: ${SCRIPT_NAME} [options] <text_file_path>
     path to a text file you want to convert to audio
 
 Note:
-  Options order:  defaults -> env from config -> arguments
+  Options order:  defaults -> envs from config -> arguments
 
   See other language & voice options at https://voicerss.org/api/demo.aspx
   Issues & readme at https://github.com/fraasi/teetoes-cli
@@ -96,12 +96,10 @@ const TEXT_LIMIT = 40000 // 100KB limit in docs, everything over 40K fails with 
 const OUT_FOLDER = process.env.TEETOES_OUTPUT_FOLDER ?? '.'
 const TEXT_FILE: PathLike = positionals[0]
 if (!TEXT_FILE) throw ` No text file specified! See ${SCRIPT_NAME} --help`
-
 const TEXT_FILE_EXT = path.extname(TEXT_FILE)
 const FILENAME = values.output as string ?? path.basename(TEXT_FILE, TEXT_FILE_EXT)
 
 infoText(`lang: ${values.lang}, voice: ${values.voice}, rate: ${values.rate}\n`)
-
 
 /**
  * Asynchronously executes the main logic of the program.
