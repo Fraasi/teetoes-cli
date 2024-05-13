@@ -1,8 +1,8 @@
 ## teetoes-cli
-
 Text to speech on command line
 
-![teetoes](https://user-images.githubusercontent.com/108606/179718300-0c7a3e8b-3e6f-4a6b-9e0c-7a7a9b0dcbf1.png)
+> note: I wanted to try some of the new node API's to build a cli program.
+> So node v21.7.0 and above is required.
 
 
 > Voice RSS provides a very human-sounding voices and supports 49 languages with 100 voices.
@@ -13,7 +13,7 @@ While not nearly as good as some other TTS's out there, this one is free and goo
 ## Installation & usage
 Just curl the bin/teetoes file to somewhere in your PATH & change the permissions to executable
 ```sh
-  curl -o /usr/local/bin/teetoes https://raw.githubusercontent.com/fraasi/teetoes-cli/main/bin/teetoes
+  curl https://raw.githubusercontent.com/fraasi/teetoes-cli/main/bin/teetoes -o /usr/local/bin/teetoes
   chmod +x /usr/local/bin/teetoes
 ```
 and you're good to go if you setup your api key in the config file (see below)
@@ -23,15 +23,13 @@ and you're good to go if you setup your api key in the config file (see below)
 Languages have a default voice, so you can just use ```--lang=zh-hk``` to get chinese-hongkong default voice, no need to define ```--voice``` parameter.
 
 ## Config
-You can specify some default configs and the mandatory api key in the config file. Copy the config.example to ~/.config/teetoes/config
+You can specify some default configs and the mandatory api key (get it [here](https://www.voicerss.org/) in the config file. Copy the config.example to ~/.config/teetoes/config and set your api key and own defaults.
 ```sh
-mkdir ~/.config/teetoes
-
-
-
-```sh
-  cp .env.example .env
+mkdir -p ~/.config/teetoes
+https://raw.githubusercontent.com/fraasi/teetoes-cli/main/config.example ~/.config/teetoes/config
 ```
+## Dependencies
+Just [node](https://nodejs.org/en/) internals, no other dependencies.
 
 ## License
 MIT

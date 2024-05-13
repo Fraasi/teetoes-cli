@@ -9,17 +9,12 @@ import fs, { PathLike } from 'node:fs'
 import path from 'node:path'
 import * as readline from 'node:readline/promises'
 import { URLSearchParams } from 'node:url'
-import { parseArgs} from 'node:util'
+import { parseArgs, styleText } from 'node:util'
 
 
-// get envs from config
-// FIX: to use util.parseEnv  https://nodejs.org/api/util.html#utilparseenvcontent
-const envs: string = fs.readFileSync(path.join(homedir(), '/.config/teetoes/config'), 'utf8')
-envs.split('\n').forEach((env) => {
-  const [key, value] = env.split('=')
-  if (!key || !value) return
-  process.env[key] = value
-})
+// get envs from config, no need for parseEnv, loadEnvFile loads straight to process.env
+const envFilePath = path.join(homedir(), '/.config/teetoes/config')
+if (fs.existsSync(envFilePath)) process.loadEnvFile(envFilePath)
 
 // parse args
 const argOptions: Record<string, any> = {
@@ -72,23 +67,24 @@ ${SCRIPT_NAME} v~TEETOES_VERSION~: Text to speech on command line
 
 Usage: ${SCRIPT_NAME} [options] <text_file_path>
 
-  -h, --help
-    ${argOptions.help.description}
   -l, --lang
     ${argOptions.lang.description}
   -v, --voice
     ${argOptions.voice.description}
-  -s --speed
+  -r --rate
     ${argOptions.rate.description}
   -o, --output
     ${argOptions.output.description}
+  -h, --help
+    ${argOptions.help.description}
 
   <text_file_path>
     path to a text file you want to convert to audio
 
-  Options order: arguments -> from config -> defaults
+Note:
+  Options order:  defaults -> env from config -> arguments
 
-  See other language & voice options at: https://voicerss.org/api/demo.aspx
+  See other language & voice options at https://voicerss.org/api/demo.aspx
   Issues & readme at https://github.com/fraasi/teetoes-cli
   `)
   process.exit(0)
@@ -103,8 +99,9 @@ if (!TEXT_FILE) throw ` No text file specified! See ${SCRIPT_NAME} --help`
 
 const TEXT_FILE_EXT = path.extname(TEXT_FILE)
 const FILENAME = values.output as string ?? path.basename(TEXT_FILE, TEXT_FILE_EXT)
+const INFO = styleText('green', '[info]')
 
-process.stdout.write(`lang: ${values.lang}, voice: ${values.voice}, rate: ${values.rate}\n`)
+process.stdout.write(`${INFO} lang: ${values.lang}, voice: ${values.voice}, rate: ${values.rate}\n`)
 
 
 /**
@@ -119,8 +116,8 @@ async function main() {
   const textFile = fs.readFileSync(TEXT_FILE, 'utf8')
   if (textFile.length === 0) throw `${TEXT_FILE} seem to be empty! Nothing to convert to audio.`
   const textArr: string[] = sliceTextTochunks(textFile)
-  process.stdout.write(`${TEXT_FILE} has a size of ${stats.size / 1000} KB and length of: ${textFile.length}\n`)
-  process.stdout.write(`processing in ${textArr.length} ${TEXT_LIMIT / 1000}K parts...`)
+  process.stdout.write(`${TEXT_FILE} has a size of ${stats.size / 1000}KB and length of ${textFile.length} characters\n`)
+  process.stdout.write(`${INFO} processing in ${textArr.length} ${TEXT_LIMIT / 1000}K parts...`)
   const clearProgressSpinner: Function = progressSpinner()
 
   const buffArr: Promise<Buffer>[] = []
@@ -170,8 +167,8 @@ async function main() {
       throw new Error(bin.toString())
     }
 
-    const ext: string = FILENAME.endsWith('mp3') ? '' : 'mp3'
-    const mp3Path: PathLike = `${OUT_FOLDER}/${FILENAME}.${ext}`
+    const ext: string = FILENAME.endsWith('.mp3') ? '' : '.mp3'
+    const mp3Path: PathLike = `${OUT_FOLDER}/${FILENAME}${ext}`
 
     if (fs.existsSync(mp3Path)) {
       const rl: readline.Interface = readline.createInterface({
