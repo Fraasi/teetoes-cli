@@ -99,9 +99,8 @@ if (!TEXT_FILE) throw ` No text file specified! See ${SCRIPT_NAME} --help`
 
 const TEXT_FILE_EXT = path.extname(TEXT_FILE)
 const FILENAME = values.output as string ?? path.basename(TEXT_FILE, TEXT_FILE_EXT)
-const INFO = styleText('green', '[info]')
 
-process.stdout.write(`${INFO} lang: ${values.lang}, voice: ${values.voice}, rate: ${values.rate}\n`)
+infoText(`lang: ${values.lang}, voice: ${values.voice}, rate: ${values.rate}\n`)
 
 
 /**
@@ -116,8 +115,8 @@ async function main() {
   const textFile = fs.readFileSync(TEXT_FILE, 'utf8')
   if (textFile.length === 0) throw `${TEXT_FILE} seem to be empty! Nothing to convert to audio.`
   const textArr: string[] = sliceTextTochunks(textFile)
-  process.stdout.write(`${TEXT_FILE} has a size of ${stats.size / 1000}KB and length of ${textFile.length} characters\n`)
-  process.stdout.write(`${INFO} processing in ${textArr.length} ${TEXT_LIMIT / 1000}K parts...`)
+  infoText(`${TEXT_FILE} has a size of ${stats.size / 1000}KB and length of ${textFile.length} characters\n`)
+  infoText(`processing in ${textArr.length} ${TEXT_LIMIT / 1000}K parts...`)
   const clearProgressSpinner: Function = progressSpinner()
 
   const buffArr: Promise<Buffer>[] = []
@@ -175,16 +174,18 @@ async function main() {
         input: process.stdin,
         output: process.stdout,
       })
-      const answer: string = await rl.question(`File ${mp3Path} already exists. Do you want to overwrite it? (y/n) `)
+      const question = styleText('yellow', '[???]')
+      const answer: string = await rl.question(`${question} ${mp3Path} already exists. Do you want to overwrite it? (y/n) `)
       rl.close()
       if (answer !== 'y') {
-        process.stdout.write('Canceling...\n')
+        const abort = styleText('red', '[abort]')
+        process.stdout.write(`${abort} no overwrite\n`)
         process.exit(1)
       }
     }
 
     fs.writeFileSync(mp3Path, bin, { encoding: 'binary' })
-    process.stdout.write(`${mp3Path} has been saved\n`)
+    infoText(`${mp3Path} has been saved\n`)
 
   } catch (err) {
     throw err
@@ -223,9 +224,12 @@ function progressSpinner(): () => void {
   }
 }
 
-main().then(() => {
-  process.stdout.write('All done')
-}).catch(err => {
+function infoText(text: string): void {
+  const info = styleText('green', '[info]')
+  process.stdout.write(`${info} ${text}`)
+}
+
+main().catch(err => {
   console.error(err)
   process.exit(1)
 })
