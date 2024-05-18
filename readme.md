@@ -12,7 +12,7 @@ While not nearly as good as some other TTS's out there, this one is free and goo
 ## Installation & usage
 Just curl the bin/teetoes file to somewhere in your PATH & change the permissions to executable
 ```sh
-$ curl https://raw.githubusercontent.com/fraasi/teetoes-cli/main/bin/teetoes -o /usr/local/bin/teetoes
+$ curl https://raw.githubusercontent.com/Fraasi/teetoes-cli/master/bin/teetoes -o /usr/local/bin/teetoes
   chmod +x /usr/local/bin/teetoes
 ```
 and you're good to go if you setup your api key in the config file (see below)
@@ -49,7 +49,7 @@ Languages have a default voice, so you can just use ```--lang=zh-hk``` to get ch
 You can specify some default configs and the mandatory api key (get it [here](https://www.voicerss.org/)) in the config file. Copy the config.example to ~/.config/teetoes/config and set your api key and own defaults. Empty configs will use defaults listed in help.
 ```sh
 mkdir -p ~/.config/teetoes
-https://raw.githubusercontent.com/fraasi/teetoes-cli/main/config.example ~/.config/teetoes/config
+https://raw.githubusercontent.com/fraasi/teetoes-cli/master/config.example ~/.config/teetoes/config
 ```
 ## Dependencies
 Just [node](https://nodejs.org/en/) internals, no other dependencies.
