@@ -92,7 +92,7 @@ Note:
 
 // set globals
 const VOICERSS_APIKEY = process.env.VOICERSS_APIKEY ?? ''
-const TEXT_LIMIT = 40000 // 100KB limit in docs, everything over 40K fails with empty buffer
+const TEXT_LIMIT = 30000 // 100KB limit in docs, everything over 40K fails with empty buffer
 const OUT_FOLDER = process.env.TEETOES_OUTPUT_FOLDER ?? '.'
 const TEXT_FILE: PathLike = positionals[0]
 if (!TEXT_FILE) throw ` No text file specified! See ${SCRIPT_NAME} --help`
