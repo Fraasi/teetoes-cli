@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 //*
-/* teetoes tex to speeech on command line
+/* teetoes text to speeech on command line
 */
 
 import { homedir } from 'node:os'
